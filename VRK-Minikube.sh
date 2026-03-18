@@ -2,6 +2,7 @@
 
 echo "========================================="
 echo "Minikube Setup"
+echo "Run from Non-root user"
 echo "Installing Docker, kubectl and Minikube"
 echo "========================================="
 
