@@ -2,23 +2,56 @@
 
 echo "🚀 Starting VRK Cloud Academy Setup..."
 
-# Update system
-yum update -y
+# Must be root
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Run with: sudo ./ngnix.sh"
+  exit 1
+fi
 
-# Install NGINX
-sudo yum install nginx -y
+# Detect package manager
+if command -v dnf >/dev/null 2>&1; then
+    PKG="dnf"
+elif command -v yum >/dev/null 2>&1; then
+    PKG="yum"
+elif command -v apt >/dev/null 2>&1; then
+    PKG="apt"
+    apt update -y
+else
+    echo "❌ No supported package manager found"
+    exit 1
+fi
 
-# Start & Enable NGINX
-systemctl start nginx
-systemctl enable nginx
+echo "📦 Using package manager: $PKG"
 
-# Deploy Professional Dashboard
+# Install nginx
+if [ "$PKG" = "yum" ]; then
+    yum update -y
+    amazon-linux-extras install nginx1 -y 2>/dev/null
+    yum install nginx -y
+else
+    $PKG update -y
+    $PKG install nginx -y
+fi
+
+# Start nginx (works for all systems)
+service nginx start 2>/dev/null || systemctl start nginx
+
+# Enable nginx
+chkconfig nginx on 2>/dev/null || systemctl enable nginx
+
+# Ensure directory exists
+mkdir -p /usr/share/nginx/html
+
+# Deploy professional HTML (UTF-8 FIXED)
 cat << 'EOF' > /usr/share/nginx/html/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VRK Cloud Academy</title>
+
 <style>
 body {
   margin: 0;
@@ -106,8 +139,8 @@ h2 {
 </html>
 EOF
 
-# Restart NGINX
-systemctl restart nginx
+# Restart nginx
+service nginx restart 2>/dev/null || systemctl restart nginx
 
 echo "✅ Setup Complete!"
 echo "🌐 Open your EC2 Public IP in browser"
