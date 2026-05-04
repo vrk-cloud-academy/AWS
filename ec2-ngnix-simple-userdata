@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euxo pipefail
+
+# Log everything
+exec > /var/log/user-data.log 2>&1
+
+echo "===== USER DATA SCRIPT START ====="
+
+# Wait for system to be ready (network + yum locks)
+sleep 10
+
+# Update packages (only once per instance)
+if [ ! -f /var/log/first_update_done ]; then
+    yum update -y
+    touch /var/log/first_update_done
+fi
+
+# Install nginx if not installed
+if ! rpm -q nginx >/dev/null 2>&1; then
+    # Handle Amazon Linux 2
+    if command -v amazon-linux-extras >/dev/null 2>&1; then
+        amazon-linux-extras enable nginx1 || true
+    fi
+
+    yum install -y nginx
+fi
+
+# Ensure systemd is ready
+systemctl daemon-reexec
+
+# Enable nginx on boot
+systemctl enable nginx
+
+# Start nginx if not running
+if ! systemctl is-active nginx >/dev/null 2>&1; then
+    systemctl start nginx
+fi
+
+# Deploy/update web page
+mkdir -p /usr/share/nginx/html
+echo "My First NGNIX Project from User add!!!!..............WORKING" > /usr/share/nginx/html/index.html
+
+# Restart nginx to apply changes
+systemctl restart nginx
+
+# Final status check
+systemctl is-active nginx
+
+echo "===== USER DATA SCRIPT COMPLETE ====="
